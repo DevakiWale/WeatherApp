@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Weather App</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      color: #fff;
+      background-color: #1e293b;
+      transition: background-color 0.5s ease;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    input {
+      width: 200px;
+    }
+
+    button {
+      background-color: #0077b6;
+      color: white;
+      cursor: pointer;
+    }
+
+    .loader {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #ffffff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #result img {
+      width: 80px;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    #localTime {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌦️ Smart Weather App</h1>
+  <input type="text" id="cityInput" placeholder="Enter city" />
+  <button onclick="getWeather()">Search</button>
+  <button onclick="getWeatherByLocation()">📍 Use My Location</button>
+
+  <div class="loader" id="loader"></div>
+  <div id="result"></div>
+  <div id="localTime"></div>
+
+  <script>
+    const API_KEY = "b8fa4eb981898ce74992b5dec70a59b6";
+
+    const conditionColors = {
+      Clear: "#f59e0b",
+      Clouds: "#64748b",
+      Rain: "#1e3a8a",
+      Snow: "#94a3b8",
+      Thunderstorm: "#4b5563",
+      Drizzle: "#60a5fa",
+      Mist: "#a1a1aa",
+      Haze: "#a8a29e",
+      Smoke: "#6b7280",
+      Fog: "#9ca3af",
+      Dust: "#d97706"
+    };
+
+    function updateBackground(condition) {
+      document.body.style.backgroundColor = conditionColors[condition] || "#38bdf8";
+    }
+
+    function formatLocalTime(timezoneOffsetSec) {
+      const localDate = new Date(new Date().getTime() + timezoneOffsetSec * 1000);
+      return localDate.toLocaleString();
+    }
+
+    async function getWeather(city = null, coords = null) {
+      const result = document.getElementById("result");
+      const loader = document.getElementById("loader");
+      const timeDiv = document.getElementById("localTime");
+
+      result.innerHTML = "";
+      timeDiv.textContent = "";
+      loader.style.display = "block";
+
+      try {
+        let url = "";
+
+        if (coords) {
+          const { lat, lon } = coords;
+          url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`;
+        } else {
+          city = document.getElementById("cityInput").value.trim();
+          if (!city) {
+            result.textContent = "❗ Please enter a city name.";
+            loader.style.display = "none";
+            return;
+          }
+          url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.cod !== 200) {
+          result.textContent = `❌ ${data.message}`;
+        } else {
+          const weather = data.weather[0];
+          const iconUrl = `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
+
+          result.innerHTML = `
+            <h2>${data.name}, ${data.sys.country}</h2>
+            <img src="${iconUrl}" alt="${weather.description}" />
+            <p>Temperature: ${data.main.temp} °C</p>
+            <p>Condition: ${weather.main} (${weather.description})</p>
+          `;
+
+          timeDiv.textContent = "Local Time: " + formatLocalTime(data.timezone);
+          updateBackground(weather.main);
+        }
+      } catch (err) {
+        result.textContent = "⚠️ Failed to fetch weather.";
+        console.error(err);
+      }
+
+      loader.style.display = "none";
+    }
+
+    function getWeatherByLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          };
+          getWeather(null, coords);
+        },
+        (err) => {
+          alert("Location access denied.");
+          console.error(err);
+        }
+      );
+    }
+  </script>
+
+</body>
+</html>
